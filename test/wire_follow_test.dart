@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:logisim_mobile/core/component.dart';
-import 'package:logisim_mobile/core/geometry.dart';
-import 'package:logisim_mobile/core/wire.dart';
-import 'package:logisim_mobile/state/editor_state.dart';
+import 'package:logisnap/core/component.dart';
+import 'package:logisnap/core/geometry.dart';
+import 'package:logisnap/core/wire.dart';
+import 'package:logisnap/state/editor_state.dart';
 
 import 'wire_edit_test.dart' show expectOrtogonal;
 

@@ -570,7 +570,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void _showAbout() {
     showAboutDialog(
       context: context,
-      applicationName: 'Logisim Mobile',
+      applicationName: 'LogiSnap',
       applicationVersion: '0.1.0',
       children: const [
         Text('Simulador de circuitos lógicos digitais para celular, '

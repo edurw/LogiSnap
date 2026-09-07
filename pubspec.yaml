@@ -1,4 +1,4 @@
-name: logisim_mobile
+name: logisnap
 description: "Simulador de circuitos lógicos digitais para celular, inspirado no Logisim Evolution."
 publish_to: 'none'
 version: 0.1.0+1

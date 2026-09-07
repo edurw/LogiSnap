@@ -85,7 +85,7 @@ class ProjectStorage {
     await file.writeAsString(CircFormat.export(circuit));
     await SharePlus.instance.share(ShareParams(
       files: [XFile(file.path, mimeType: 'application/xml')],
-      text: 'Circuito exportado do Logisim Mobile',
+      text: 'Circuito exportado do LogiSnap',
     ));
   }
 

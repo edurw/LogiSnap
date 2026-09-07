@@ -11,6 +11,7 @@ android/local.properties
 android/.gradle/
 android/app/.cxx/
 *.keystore
+*.jks
 key.properties
 
 # IDE

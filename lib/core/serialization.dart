@@ -15,7 +15,7 @@ class CircuitJson {
       const JsonEncoder.withIndent('  ').convert(toMap(circuit));
 
   static Map<String, dynamic> toMap(Circuit circuit) => {
-        'app': 'logisim_mobile',
+        'app': 'logisnap',
         'version': formatVersion,
         'name': circuit.name,
         'components': [

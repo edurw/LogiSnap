@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:logisim_mobile/core/circ_format.dart';
-import 'package:logisim_mobile/core/circuit.dart';
-import 'package:logisim_mobile/core/component.dart';
-import 'package:logisim_mobile/core/geometry.dart';
-import 'package:logisim_mobile/core/simulator.dart';
-import 'package:logisim_mobile/core/values.dart';
+import 'package:logisnap/core/circ_format.dart';
+import 'package:logisnap/core/circuit.dart';
+import 'package:logisnap/core/component.dart';
+import 'package:logisnap/core/geometry.dart';
+import 'package:logisnap/core/simulator.dart';
+import 'package:logisnap/core/values.dart';
 
 Component find(Circuit c, String label) =>
     c.components.firstWhere((e) => e.label == label);

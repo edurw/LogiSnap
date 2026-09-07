@@ -1,4 +1,4 @@
-# Logisim Mobile
+# LogiSnap
 
 Simulador de circuitos lógicos digitais para Android, feito em Flutter e
 inspirado no [Logisim Evolution](https://github.com/logisim-evolution/logisim-evolution).
@@ -26,7 +26,7 @@ Pré-requisitos: [Flutter](https://docs.flutter.dev/get-started/install) 3.22+
 com toolchain Android configurada (`flutter doctor`).
 
 ```bash
-cd logisim_mobile
+cd logisnap
 flutter pub get
 flutter run            # com um celular/emulador conectado
 flutter build apk      # gera build/app/outputs/flutter-apk/app-release.apk
@@ -43,7 +43,7 @@ pasta Android mantendo o código Dart:
 
 ```bash
 rm -rf android
-flutter create --platforms=android --org dev.chico --project-name logisim_mobile .
+flutter create --platforms=android --org dev.chico --project-name logisnap .
 ```
 
 ## Estrutura do código

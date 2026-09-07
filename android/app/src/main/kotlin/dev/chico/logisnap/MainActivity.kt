@@ -1,4 +1,4 @@
-package dev.chico.logisim_mobile
+package dev.chico.logisnap
 
 import io.flutter.embedding.android.FlutterActivity
 

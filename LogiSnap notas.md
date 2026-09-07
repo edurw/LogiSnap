@@ -1,6 +1,6 @@
-# Logisim Mobile — estado do projeto (23/08/2026)
+# LogiSnap — estado do projeto (23/08/2026)
  
-App Flutter (Android) inspirado no Logisim Evolution, entregue como `logisim_mobile.zip` na conversa.
+App Flutter (Android) inspirado no Logisim Evolution, entregue como `logisnap.zip` na conversa.
  
 ## O que existe
 - MVP funcional: canvas com pan/zoom por toque, paleta com 14 componentes (pinos de entrada/saída, LED, botão, clock, constante, NOT, Buffer, AND, OR, NAND, NOR, XOR, XNOR — 1 bit, 2 a 8 entradas), modos Interagir/Mover/Fio/Apagar, girar/rótulo/duplicar, undo.

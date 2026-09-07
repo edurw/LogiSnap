@@ -7,7 +7,19 @@
       "Read(//c/Users/eduwe/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_platform_interface-3.0.1/lib//**)",
       "Bash(flutter analyze *)",
       "Bash(flutter test *)",
-      "Bash(flutter build *)"
+      "Bash(flutter build *)",
+      "Bash(sed -i 's/^name: logisim_mobile$/name: logisnap/' pubspec.yaml)",
+      "Bash(sed -i 's|package:logisim_mobile/|package:logisnap/|g' test/*.dart)",
+      "Bash(sed -i \"s/LogisimMobileApp/LogiSnapApp/g; s/title: 'Logisim Mobile'/title: 'LogiSnap'/\" lib/main.dart)",
+      "Bash(sed -i \"s/LogisimMobileApp/LogiSnapApp/g\" test/widget_test.dart)",
+      "Bash(sed -i \"s/applicationName: 'Logisim Mobile'/applicationName: 'LogiSnap'/\" lib/ui/editor_screen.dart)",
+      "Bash(sed -i \"s/Circuito exportado do Logisim Mobile/Circuito exportado do LogiSnap/\" lib/ui/project_storage.dart)",
+      "Bash(sed -i 's/android:label=\"Logisim Mobile\"/android:label=\"LogiSnap\"/' android/app/src/main/AndroidManifest.xml)",
+      "Bash(sed -i 's/dev\\\\.chico\\\\.logisim_mobile/dev.chico.logisnap/g' android/app/build.gradle.kts)",
+      "Bash(mkdir -p android/app/src/main/kotlin/dev/chico/logisnap)",
+      "Bash(git mv *)",
+      "Bash(mv android/app/src/main/kotlin/dev/chico/logisim_mobile/MainActivity.kt android/app/src/main/kotlin/dev/chico/logisnap/MainActivity.kt)",
+      "Bash(rmdir android/app/src/main/kotlin/dev/chico/logisim_mobile)"
     ]
   }
 }

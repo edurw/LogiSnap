@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:logisim_mobile/core/circ_format.dart';
-import 'package:logisim_mobile/core/circuit.dart';
-import 'package:logisim_mobile/core/component.dart';
-import 'package:logisim_mobile/core/geometry.dart';
-import 'package:logisim_mobile/core/serialization.dart';
-import 'package:logisim_mobile/core/wire.dart';
+import 'package:logisnap/core/circ_format.dart';
+import 'package:logisnap/core/circuit.dart';
+import 'package:logisnap/core/component.dart';
+import 'package:logisnap/core/geometry.dart';
+import 'package:logisnap/core/serialization.dart';
+import 'package:logisnap/core/wire.dart';
 
 void main() {
   group('O fio é um objeto só', () {
@@ -139,6 +139,9 @@ void main() {
     });
 
     test('JSON do formato 1 (segmentos retos) ainda abre', () {
+      // O carimbo "app" é de propósito o nome antigo: um projeto salvo antes
+      // do rename para LogiSnap tem de continuar abrindo. O decodificador
+      // ignora esse campo, então ele só documenta a origem do arquivo.
       const legacy = '''
 {
   "app": "logisim_mobile",

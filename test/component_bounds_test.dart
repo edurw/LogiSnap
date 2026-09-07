@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:logisim_mobile/core/circuit.dart';
-import 'package:logisim_mobile/core/component.dart';
-import 'package:logisim_mobile/core/geometry.dart';
+import 'package:logisnap/core/circuit.dart';
+import 'package:logisnap/core/component.dart';
+import 'package:logisnap/core/geometry.dart';
 
 Component place(
   Circuit c,
