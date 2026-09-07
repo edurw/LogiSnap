@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(flutter analyze 2>&1)",
+      "PowerShell($p = Select-String -Path \"c:\\\\git\\\\logisim_mobile\\\\.dart_tool\\\\package_config.json\" -Pattern '\"file_picker\"' ; Get-Content \"c:\\\\git\\\\logisim_mobile\\\\.dart_tool\\\\package_config.json\" | ConvertFrom-Json | Select-Object -ExpandProperty packages | Where-Object { $_.name -eq 'file_picker' } | Format-List)",
+      "Bash(grep -rn \"class PlatformFile\" -A 80 \"/c/Users/eduwe/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_platform_interface-3.0.1/lib/\" | head -120)",
+      "Read(//c/Users/eduwe/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_platform_interface-3.0.1/lib//**)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter test *)",
+      "Bash(flutter build *)"
+    ]
+  }
+}

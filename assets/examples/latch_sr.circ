@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project source="3.8.0" version="1.0">
+  <lib desc="#Wiring" name="0"/>
+  <lib desc="#Gates" name="1"/>
+  <lib desc="#I/O" name="5"/>
+  <main name="main"/>
+  <options/>
+  <mappings/>
+  <toolbar/>
+  <circuit name="latch-sr">
+    <a name="circuit" val="latch-sr"/>
+    <comp lib="5" loc="(170,170)" name="Button">
+      <a name="label" val="R"/>
+    </comp>
+    <comp lib="5" loc="(170,310)" name="Button">
+      <a name="label" val="S"/>
+    </comp>
+    <comp lib="1" loc="(330,180)" name="NOR Gate">
+      <a name="inputs" val="2"/>
+      <a name="size" val="50"/>
+    </comp>
+    <comp lib="1" loc="(330,300)" name="NOR Gate">
+      <a name="inputs" val="2"/>
+      <a name="size" val="50"/>
+    </comp>
+    <comp lib="5" loc="(430,180)" name="LED">
+      <a name="label" val="Q"/>
+    </comp>
+    <comp lib="5" loc="(430,300)" name="LED">
+      <a name="label" val="Qn"/>
+    </comp>
+    <wire from="(170,170)" to="(270,170)"/>
+    <wire from="(170,310)" to="(270,310)"/>
+    <wire from="(330,180)" to="(430,180)"/>
+    <wire from="(330,300)" to="(430,300)"/>
+    <wire from="(370,180)" to="(370,240)"/>
+    <wire from="(230,240)" to="(370,240)"/>
+    <wire from="(230,240)" to="(230,290)"/>
+    <wire from="(230,290)" to="(270,290)"/>
+    <wire from="(390,250)" to="(390,300)"/>
+    <wire from="(250,250)" to="(390,250)"/>
+    <wire from="(250,190)" to="(250,250)"/>
+    <wire from="(250,190)" to="(270,190)"/>
+  </circuit>
+</project>

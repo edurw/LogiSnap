@@ -1,0 +1,286 @@
+import 'package:flutter/material.dart';
+
+import '../core/geometry.dart';
+import '../core/wire.dart';
+import '../state/editor_state.dart';
+import 'circuit_painter.dart';
+
+/// Área de edição: desenha o circuito e traduz gestos de toque em ações.
+///
+/// Gestos:
+/// - dois dedos: pan e zoom (em qualquer modo);
+/// - um dedo arrastando: pan (modos interagir/apagar/adicionar), mover
+///   componente ou fio (modo selecionar) ou desenhar fio (modo fio);
+/// - toque simples: ação do modo ativo.
+class CircuitCanvas extends StatefulWidget {
+  final EditorState state;
+  const CircuitCanvas({super.key, required this.state});
+
+  @override
+  State<CircuitCanvas> createState() => _CircuitCanvasState();
+}
+
+class _CircuitCanvasState extends State<CircuitCanvas> {
+  Offset _pan = const Offset(60, 80);
+  double _zoom = 1.6;
+
+  // Estado transitório dos gestos.
+  double _zoomAtGestureStart = 1.6;
+  Offset? _wireStart;
+  Offset? _wireEnd;
+
+  /// Eixo que o traço vai percorrer primeiro, travado no primeiro movimento
+  /// do dedo que passa de uma casa da grade.
+  RouteAxis? _wireAxis;
+
+  bool _draggingSelection = false;
+  bool _draggingHandle = false;
+  bool _panning = false;
+  int _pointers = 0;
+
+  /// Tolerância das alças em unidades do mundo: dividida pelo zoom, o alvo
+  /// tem sempre o mesmo tamanho no dedo.
+  int get _handleSlop =>
+      (EditorState.handleTouchSlop / _zoom).round().clamp(4, 60);
+
+  EditorState get st => widget.state;
+
+  Offset _toWorld(Offset screen) => (screen - _pan) / _zoom;
+
+  /// Ponto encaixado na grade — usado para criar coisas (fios, componentes).
+  GridPoint _snapPoint(Offset world) =>
+      GridPoint(snap(world.dx), snap(world.dy));
+
+  /// Ponto exato do toque, sem encaixar na grade — usado para acertar o que
+  /// está embaixo do dedo, onde o encaixe atrapalharia a tolerância.
+  GridPoint _hitPoint(Offset world) =>
+      GridPoint(world.dx.round(), world.dy.round());
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _pointers++,
+      onPointerUp: (_) => _pointers = (_pointers - 1).clamp(0, 10),
+      onPointerCancel: (_) => _pointers = (_pointers - 1).clamp(0, 10),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: _onTapDown,
+        onTapUp: _onTapUp,
+        onTapCancel: () => st.pressUpAll(),
+        onScaleStart: _onScaleStart,
+        onScaleUpdate: _onScaleUpdate,
+        onScaleEnd: _onScaleEnd,
+        child: AnimatedBuilder(
+          animation: st,
+          builder: (context, _) {
+            List<GridPoint>? preview;
+            if (_wireStart != null && _wireEnd != null) {
+              final a = _snapPoint(_toWorld(_wireStart!));
+              final b = _snapPoint(_toWorld(_wireEnd!));
+              if (a != b) {
+                preview = Wire.routePath(a, b, firstAxis: _wireAxis);
+              }
+            }
+            return CustomPaint(
+              size: Size.infinite,
+              painter: CircuitPainter(
+                circuit: st.circuit,
+                simulator: st.simulator,
+                selectedId: st.selectedId,
+                selectedWireId: st.selectedWireId,
+                handles: st.wireHandles,
+                zoom: _zoom,
+                pan: _pan,
+                wirePreview: preview,
+                showPorts: st.mode == EditorMode.wire,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------- Toques
+
+  void _onTapDown(TapDownDetails d) {
+    if (st.mode == EditorMode.interact) {
+      st.pressDownAt(_hitPoint(_toWorld(d.localPosition)));
+    }
+  }
+
+  void _onTapUp(TapUpDetails d) {
+    final world = _toWorld(d.localPosition);
+    switch (st.mode) {
+      case EditorMode.interact:
+        st.pressUpAll();
+        st.pokeAt(_hitPoint(world));
+        break;
+      case EditorMode.select:
+        // Editando: só o botão "Concluir" sai do modo, para um toque fora do
+        // fio não desfazer a seleção no meio do ajuste.
+        if (!st.editingWire) st.selectAt(_hitPoint(world));
+        break;
+      case EditorMode.erase:
+        st.eraseAt(_hitPoint(world));
+        break;
+      case EditorMode.place:
+        st.placeAt(_snapPoint(world));
+        break;
+      case EditorMode.wire:
+        break;
+    }
+  }
+
+  // ------------------------------------------------------------- Arrastos
+
+  /// Alça mais próxima de [p] dentro da tolerância. Vértice ganha de ponto
+  /// médio no empate: mover uma curva é mais comum que criar uma nova.
+  WireHandle? _handleAt(GridPoint p) {
+    final slop = _handleSlop;
+    WireHandle? best;
+    var bestDist = 1 << 30;
+    for (final h in st.wireHandles) {
+      final d = (h.at.x - p.x).abs() + (h.at.y - p.y).abs();
+      if (d > slop) continue;
+      final better = d < bestDist ||
+          (d == bestDist && best != null && best.isSegment && !h.isSegment);
+      if (better) {
+        bestDist = d;
+        best = h;
+      }
+    }
+    return best;
+  }
+
+  void _onScaleStart(ScaleStartDetails d) {
+    st.pressUpAll();
+    _zoomAtGestureStart = _zoom;
+    _wireStart = null;
+    _wireEnd = null;
+    _wireAxis = null;
+    _draggingSelection = false;
+    _draggingHandle = false;
+    _panning = false;
+
+    if (d.pointerCount >= 2 || _pointers >= 2) {
+      _panning = true;
+      return;
+    }
+
+    final world = _toWorld(d.localFocalPoint);
+    final hitAt = _hitPoint(world);
+    switch (st.mode) {
+      case EditorMode.wire:
+        _wireStart = d.localFocalPoint;
+        _wireEnd = d.localFocalPoint;
+        break;
+      case EditorMode.select when st.editingWire:
+        final handle = _handleAt(hitAt);
+        if (handle != null) {
+          st.beginHandleDrag(handle);
+          _draggingHandle = true;
+        } else {
+          // Fora das alças o dedo continua servindo para navegar.
+          _panning = true;
+        }
+        break;
+      case EditorMode.select:
+        final hit = st.circuit.componentAt(hitAt,
+            tolerance: EditorState.componentTouchSlop);
+        final hitWire = hit == null
+            ? st.circuit.wireAt(hitAt, tolerance: EditorState.wireTouchSlop)
+            : null;
+        if (hit != null || hitWire != null) {
+          st.selectedId = hit?.id;
+          st.selectedWireId = hitWire?.id;
+          // Âncora encaixada na grade: o deslocamento do fio sai múltiplo
+          // de kGrid e ele nunca sai do alinhamento.
+          st.beginMove(_snapPoint(world));
+          _draggingSelection = true;
+        } else {
+          _panning = true;
+        }
+        break;
+      default:
+        _panning = true;
+    }
+    setState(() {});
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails d) {
+    if (d.pointerCount >= 2) {
+      // Zoom + pan com dois dedos, ancorado no ponto focal.
+      final newZoom =
+          (_zoomAtGestureStart * d.scale).clamp(0.35, 4.0).toDouble();
+      final focalWorld = (d.localFocalPoint - _pan) / _zoom;
+      _zoom = newZoom;
+      // Mantém o ponto do mundo sob o foco do gesto (isto também acompanha
+      // o deslocamento do foco, cobrindo o pan com dois dedos).
+      _pan = d.localFocalPoint - focalWorld * _zoom;
+      // Cancela interações de um dedo em andamento.
+      _wireStart = null;
+      _wireEnd = null;
+      _wireAxis = null;
+      if (_draggingSelection) {
+        st.endMove();
+        _draggingSelection = false;
+      }
+      if (_draggingHandle) {
+        st.endHandleDrag();
+        _draggingHandle = false;
+      }
+      setState(() {});
+      return;
+    }
+
+    if (_wireStart != null) {
+      _wireEnd = d.localFocalPoint;
+      // O eixo trava na primeira direção que passar de uma casa da grade,
+      // medida no mundo para o zoom não mudar a sensação do gesto.
+      if (_wireAxis == null) {
+        final delta = _toWorld(_wireEnd!) - _toWorld(_wireStart!);
+        if (delta.distance >= kGrid) {
+          _wireAxis = delta.dx.abs() >= delta.dy.abs()
+              ? RouteAxis.horizontal
+              : RouteAxis.vertical;
+        }
+      }
+      setState(() {});
+      return;
+    }
+    if (_draggingHandle) {
+      st.dragHandleTo(_snapPoint(_toWorld(d.localFocalPoint)));
+      return;
+    }
+    if (_draggingSelection) {
+      st.moveTo(_snapPoint(_toWorld(d.localFocalPoint)));
+      return;
+    }
+    if (_panning) {
+      _pan += d.focalPointDelta;
+      setState(() {});
+    }
+  }
+
+  void _onScaleEnd(ScaleEndDetails d) {
+    if (_wireStart != null && _wireEnd != null) {
+      final a = _snapPoint(_toWorld(_wireStart!));
+      final b = _snapPoint(_toWorld(_wireEnd!));
+      if (a != b) st.addWirePath(a, b, firstAxis: _wireAxis);
+    }
+    _wireStart = null;
+    _wireEnd = null;
+    _wireAxis = null;
+    if (_draggingSelection) {
+      st.endMove();
+      _draggingSelection = false;
+    }
+    if (_draggingHandle) {
+      st.endHandleDrag();
+      _draggingHandle = false;
+    }
+    _panning = false;
+    setState(() {});
+  }
+}

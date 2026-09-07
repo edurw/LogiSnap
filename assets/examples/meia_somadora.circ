@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project source="3.8.0" version="1.0">
+  <lib desc="#Wiring" name="0"/>
+  <lib desc="#Gates" name="1"/>
+  <lib desc="#I/O" name="5"/>
+  <main name="main"/>
+  <options/>
+  <mappings/>
+  <toolbar/>
+  <circuit name="meia-somadora">
+    <a name="circuit" val="meia-somadora"/>
+    <comp lib="0" loc="(160,180)" name="Pin">
+      <a name="label" val="A"/>
+    </comp>
+    <comp lib="0" loc="(160,260)" name="Pin">
+      <a name="label" val="B"/>
+    </comp>
+    <comp lib="1" loc="(330,190)" name="XOR Gate">
+      <a name="inputs" val="2"/>
+      <a name="size" val="50"/>
+    </comp>
+    <comp lib="1" loc="(330,300)" name="AND Gate">
+      <a name="inputs" val="2"/>
+      <a name="size" val="50"/>
+    </comp>
+    <comp lib="0" loc="(400,190)" name="Pin">
+      <a name="output" val="true"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="S"/>
+    </comp>
+    <comp lib="0" loc="(400,300)" name="Pin">
+      <a name="output" val="true"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="C"/>
+    </comp>
+    <wire from="(160,180)" to="(270,180)"/>
+    <wire from="(220,180)" to="(220,290)"/>
+    <wire from="(220,290)" to="(280,290)"/>
+    <wire from="(160,260)" to="(240,260)"/>
+    <wire from="(240,200)" to="(240,260)"/>
+    <wire from="(240,200)" to="(270,200)"/>
+    <wire from="(200,260)" to="(200,310)"/>
+    <wire from="(200,310)" to="(280,310)"/>
+    <wire from="(330,190)" to="(400,190)"/>
+    <wire from="(330,300)" to="(400,300)"/>
+  </circuit>
+</project>

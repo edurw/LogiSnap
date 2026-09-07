@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project source="3.8.0" version="1.0">
+  <lib desc="#Wiring" name="0"/>
+  <lib desc="#Gates" name="1"/>
+  <lib desc="#I/O" name="5"/>
+  <main name="main"/>
+  <options/>
+  <mappings/>
+  <toolbar/>
+  <circuit name="pisca-pisca">
+    <a name="circuit" val="pisca-pisca"/>
+    <comp lib="0" loc="(180,200)" name="Clock">
+      <a name="label" val="CLK"/>
+    </comp>
+    <comp lib="1" loc="(280,200)" name="NOT Gate">
+      <a name="size" val="30"/>
+    </comp>
+    <comp lib="5" loc="(340,200)" name="LED">
+      <a name="label" val="LED"/>
+    </comp>
+    <comp lib="5" loc="(340,260)" name="LED">
+      <a name="label" val="CLK_direto"/>
+    </comp>
+    <wire from="(180,200)" to="(250,200)"/>
+    <wire from="(280,200)" to="(340,200)"/>
+    <wire from="(220,200)" to="(220,260)"/>
+    <wire from="(220,260)" to="(340,260)"/>
+  </circuit>
+</project>
