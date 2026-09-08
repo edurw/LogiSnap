@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../core/geometry.dart';
@@ -21,11 +23,18 @@ class CircuitCanvas extends StatefulWidget {
 }
 
 class _CircuitCanvasState extends State<CircuitCanvas> {
-  Offset _pan = const Offset(60, 80);
-  double _zoom = 1.6;
+  /// Enquadramento inicial — e para onde "centralizar" volta quando não há
+  /// nada desenhado.
+  static const Offset _initialPan = Offset(60, 80);
+  static const double _initialZoom = 1.6;
+  static const double _minZoom = 0.35;
+  static const double _maxZoom = 4.0;
+
+  Offset _pan = _initialPan;
+  double _zoom = _initialZoom;
 
   // Estado transitório dos gestos.
-  double _zoomAtGestureStart = 1.6;
+  double _zoomAtGestureStart = _initialZoom;
   Offset? _wireStart;
   Offset? _wireEnd;
 
@@ -58,7 +67,7 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
+    final canvas = Listener(
       onPointerDown: (_) => _pointers++,
       onPointerUp: (_) => _pointers = (_pointers - 1).clamp(0, 10),
       onPointerCancel: (_) => _pointers = (_pointers - 1).clamp(0, 10),
@@ -102,6 +111,84 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
         ),
       ),
     );
+
+    // O botão de centralizar fica sobre o canvas, no canto inferior direito:
+    // longe das barras de seleção (topo) e ao alcance do polegar.
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        children: [
+          Positioned.fill(child: canvas),
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: FloatingActionButton.small(
+              heroTag: null,
+              tooltip: 'Centralizar',
+              onPressed: () => _centerView(constraints.biggest),
+              child: const Icon(Icons.center_focus_strong),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------- Enquadramento
+
+  /// Retângulo que envolve tudo o que está desenhado, em coordenadas do
+  /// mundo. Null quando o circuito está vazio.
+  Rect? _contentBounds() {
+    var minX = double.infinity, minY = double.infinity;
+    var maxX = double.negativeInfinity, maxY = double.negativeInfinity;
+
+    void include(num x, num y) {
+      if (x < minX) minX = x.toDouble();
+      if (y < minY) minY = y.toDouble();
+      if (x > maxX) maxX = x.toDouble();
+      if (y > maxY) maxY = y.toDouble();
+    }
+
+    for (final c in st.circuit.components) {
+      final b = st.circuit.boundsOf(c);
+      include(b[0], b[1]);
+      include(b[2], b[3]);
+    }
+    for (final w in st.circuit.wires) {
+      for (final p in w.points) {
+        include(p.x, p.y);
+      }
+    }
+    if (minX > maxX) return null;
+    return Rect.fromLTRB(minX, minY, maxX, maxY);
+  }
+
+  /// Traz o circuito inteiro para o meio da tela.
+  ///
+  /// O zoom só diminui, e apenas quando o circuito não cabe: aproximar por
+  /// conta própria tiraria a referência de quem está trabalhando de perto.
+  /// Sem nada desenhado, volta ao enquadramento inicial.
+  void _centerView(Size view) {
+    final bounds = _contentBounds();
+    if (bounds == null || view.isEmpty) {
+      setState(() {
+        _pan = _initialPan;
+        _zoom = _initialZoom;
+      });
+      return;
+    }
+    // Margem para o circuito não encostar nas bordas nem sumir atrás do
+    // próprio botão.
+    const margin = 40.0;
+    final availableW = math.max(view.width - 2 * margin, 1.0);
+    final availableH = math.max(view.height - 2 * margin, 1.0);
+    final fit = math.min(
+      availableW / math.max(bounds.width, 1.0),
+      availableH / math.max(bounds.height, 1.0),
+    );
+    setState(() {
+      if (fit < _zoom) _zoom = fit.clamp(_minZoom, _maxZoom).toDouble();
+      _pan = view.center(Offset.zero) - bounds.center * _zoom;
+    });
   }
 
   // ------------------------------------------------------------- Toques
@@ -215,7 +302,7 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
     if (d.pointerCount >= 2) {
       // Zoom + pan com dois dedos, ancorado no ponto focal.
       final newZoom =
-          (_zoomAtGestureStart * d.scale).clamp(0.35, 4.0).toDouble();
+          (_zoomAtGestureStart * d.scale).clamp(_minZoom, _maxZoom).toDouble();
       final focalWorld = (d.localFocalPoint - _pan) / _zoom;
       _zoom = newZoom;
       // Mantém o ponto do mundo sob o foco do gesto (isto também acompanha
