@@ -160,7 +160,11 @@ class EditorState extends ChangeNotifier {
       type: type,
       x: p.x,
       y: p.y,
-      facing: type == ComponentType.led ? Facing.west : Facing.east,
+      // Saída e LED consomem sinal: nascem virados para oeste, com o ponto
+      // de conexão à esquerda, do lado de onde os fios costumam chegar.
+      facing: type == ComponentType.led || type == ComponentType.outputPin
+          ? Facing.west
+          : Facing.east,
     ));
     _structureChanged();
   }
