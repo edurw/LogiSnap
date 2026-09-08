@@ -92,7 +92,10 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
                 zoom: _zoom,
                 pan: _pan,
                 wirePreview: preview,
-                showPorts: st.mode == EditorMode.wire,
+                // Com um fio selecionado no modo Mover os terminais aparecem
+                // como no modo Fio: é neles que as pontas precisam encaixar.
+                showPorts: st.mode == EditorMode.wire ||
+                    (st.mode == EditorMode.select && st.selectedWire != null),
               ),
             );
           },
