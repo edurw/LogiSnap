@@ -62,6 +62,40 @@ android {
     }
 }
 
+// Nome do APK distribuido: LogiSnap-v<versao>.apk (a versao vem do pubspec.yaml).
+val distributionApkName = "LogiSnap-v${flutter.versionName}.apk"
+
+androidComponents {
+    onVariants { variant ->
+        if (variant.buildType == "release") {
+            variant.outputs.forEach { output ->
+                (output as? com.android.build.api.variant.impl.VariantOutputImpl)
+                    ?.outputFileName
+                    ?.set(distributionApkName)
+            }
+        }
+    }
+}
+
+// O plugin do Flutter copia o APK para outputs/flutter-apk, mas usando o nome
+// original; a ferramenta `flutter build apk` tambem exige encontrar
+// app-release.apk nesse diretorio. Entao copiamos o APK renomeado para la,
+// mantendo o alias app-release.apk que o tooling espera.
+val copyDistributionApk =
+    tasks.register<Copy>("copyDistributionApk") {
+        val apkDir = layout.buildDirectory.dir("outputs/apk/release")
+        from(apkDir) { include(distributionApkName) }
+        from(apkDir) {
+            include(distributionApkName)
+            rename { "app-release.apk" }
+        }
+        into(layout.buildDirectory.dir("outputs/flutter-apk"))
+    }
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy(copyDistributionApk)
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
