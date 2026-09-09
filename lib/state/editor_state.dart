@@ -39,6 +39,21 @@ class _WireLink {
   const _WireLink(this.base, this.startPortIndex, this.endPortIndex);
 }
 
+/// Terminal escolhido no primeiro toque da ligação por toques (modo Fio).
+class LinkAnchor {
+  /// Posição do terminal.
+  final GridPoint at;
+
+  /// Se o terminal é uma saída — decide que ponta procurar no destino.
+  final bool isOutput;
+
+  /// Eixo por onde o fio sai do terminal, para o traço nascer alinhado com o
+  /// componente em vez de cortá-lo.
+  final RouteAxis axis;
+
+  const LinkAnchor(this.at, {required this.isOutput, required this.axis});
+}
+
 /// Estado central do editor (circuito + simulação + ferramentas).
 class EditorState extends ChangeNotifier {
   Circuit circuit = Circuit();
@@ -53,6 +68,9 @@ class EditorState extends ChangeNotifier {
 
   /// Fio selecionado, ou null.
   int? selectedWireId;
+
+  /// Terminal de origem marcado no modo Fio, à espera do toque de destino.
+  LinkAnchor? linkAnchor;
 
   /// Modo de edição do traçado do fio selecionado, ligado pelo botão "Editar".
   /// Enquanto ativo, o fio mostra alças e o arraste mexe nelas.
@@ -75,6 +93,10 @@ class EditorState extends ChangeNotifier {
   /// Raio de toque das alças de edição, em pixels de tela. O canvas divide
   /// pelo zoom para o alvo ter sempre o mesmo tamanho no dedo.
   static const double handleTouchSlop = 14;
+
+  /// Raio de toque dos terminais na ligação por toques, em pixels de tela. O
+  /// canvas divide pelo zoom, como nas alças.
+  static const double portTouchSlop = 16;
 
   // ------------------------------------------------------------ Clock
   Timer? _clockTimer;
@@ -106,6 +128,7 @@ class EditorState extends ChangeNotifier {
     selectedId = null;
     selectedWireId = null;
     editingWire = false;
+    linkAnchor = null;
   }
 
   // ------------------------------------------------------------ Ferramentas
@@ -114,6 +137,7 @@ class EditorState extends ChangeNotifier {
     mode = m;
     if (m != EditorMode.place) pendingType = null;
     if (m != EditorMode.select) clearSelection();
+    linkAnchor = null;
     notifyListeners();
   }
 
@@ -395,6 +419,123 @@ class EditorState extends ChangeNotifier {
     circuit.addRoutedWire(from, to, firstAxis: firstAxis);
     _structureChanged();
   }
+
+  // ------------------------------------------------- Ligação por toques
+
+  /// Toque no modo Fio: o primeiro marca o terminal de origem, o segundo
+  /// fecha a ligação e o fio nasce roteado sozinho.
+  ///
+  /// Toque no vazio (ou no mesmo terminal de novo) desiste — é o jeito de
+  /// cancelar sem trocar de ferramenta. [portSlop] é a folga de toque dos
+  /// terminais em unidades do mundo; o canvas a calcula a partir do zoom.
+  void linkTap(GridPoint p, {int portSlop = 16}) {
+    final anchor = linkAnchor;
+    final target = _linkTargetAt(p, slop: portSlop, from: anchor);
+
+    if (target == null || (anchor != null && target.at == anchor.at)) {
+      if (anchor != null) {
+        linkAnchor = null;
+        notifyListeners();
+      }
+      return;
+    }
+    if (anchor == null) {
+      linkAnchor = target;
+      notifyListeners();
+      return;
+    }
+    linkAnchor = null;
+    // O eixo sai da origem: assim o traço deixa o componente pela frente, em
+    // vez de cortar o corpo dele.
+    addWirePath(anchor.at, target.at,
+        firstAxis: _routeAxisFor(anchor.at, target.at, anchor.axis));
+  }
+
+  void cancelLink() {
+    if (linkAnchor == null) return;
+    linkAnchor = null;
+    notifyListeners();
+  }
+
+  /// Terminal que um toque em [p] escolhe.
+  ///
+  /// Em cima de um terminal, vale ele. Caindo no corpo do componente, vale o
+  /// terminal que faz sentido no passo atual: a saída para começar e uma
+  /// entrada ainda livre para fechar — o dedo acerta o componente inteiro,
+  /// que é um alvo bem maior que o ponto de conexão.
+  LinkAnchor? _linkTargetAt(GridPoint p, {required int slop, LinkAnchor? from}) {
+    final hit = circuit.portAt(p, tolerance: slop);
+    final owner =
+        hit?.$1 ?? circuit.componentAt(p, tolerance: componentTouchSlop);
+    if (owner == null) return null;
+
+    var port = hit?.$2;
+    // O terminal debaixo do dedo só vale se combinar com a origem: ligar
+    // saída em saída é sempre erro, então o toque escorrega para a ponta
+    // oposta do mesmo componente. Sem terminal debaixo do dedo, o corpo já
+    // escolhe sozinho.
+    if (port == null || (from != null && port.isOutput == from.isOutput)) {
+      port = _preferredPort(owner, from: from);
+    }
+    return LinkAnchor(port.location,
+        isOutput: port.isOutput, axis: _linkAxisOf(owner));
+  }
+
+  /// Porta escolhida quando o toque cai no corpo do componente.
+  Port _preferredPort(Component c, {LinkAnchor? from}) {
+    // Começando, procura a saída; fechando, a ponta oposta à da origem.
+    final wantOutput = from == null || !from.isOutput;
+    var candidates = c.ports.where((p) => p.isOutput == wantOutput).toList();
+    if (candidates.isEmpty) candidates = c.ports.toList();
+    // Entre as do lado certo, as que ainda não têm fio: empilhar em cima de
+    // uma entrada já ligada é quase sempre engano.
+    final free =
+        candidates.where((p) => !circuit.hasWireAt(p.location)).toList();
+    final pool = free.isEmpty ? candidates : free;
+    if (from == null) return pool.first;
+    // A entrada mais alinhada com a origem: o fio sai reto, sem passar na
+    // frente das vizinhas.
+    var best = pool.first;
+    var bestDist = 1 << 30;
+    for (final p in pool) {
+      final d = (p.location.x - from.at.x).abs() + (p.location.y - from.at.y).abs();
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  /// Eixo de saída do fio, desviando de terminais no meio do caminho.
+  ///
+  /// Um fio que passa por cima de um terminal se liga a ele — é assim que o
+  /// L clássico consegue encostar na entrada vizinha e curto-circuitar dois
+  /// sinais sem ninguém perceber. Quando o eixo natural faz isso, vale o
+  /// outro.
+  RouteAxis _routeAxisFor(GridPoint from, GridPoint to, RouteAxis preferred) {
+    if (!_pathTouchesPort(from, to, preferred)) return preferred;
+    final other = preferred == RouteAxis.horizontal
+        ? RouteAxis.vertical
+        : RouteAxis.horizontal;
+    return _pathTouchesPort(from, to, other) ? preferred : other;
+  }
+
+  bool _pathTouchesPort(GridPoint from, GridPoint to, RouteAxis axis) {
+    final path = Wire(0, Wire.routePath(from, to, firstAxis: axis));
+    for (final c in circuit.components) {
+      for (final p in c.ports) {
+        if (path.containsInterior(p.location)) return true;
+      }
+    }
+    return false;
+  }
+
+  /// Eixo por onde o fio sai do componente — o eixo para onde ele aponta.
+  RouteAxis _linkAxisOf(Component c) =>
+      c.facing == Facing.east || c.facing == Facing.west
+          ? RouteAxis.horizontal
+          : RouteAxis.vertical;
 
   void eraseAt(GridPoint p) {
     final c = circuit.componentAt(p, tolerance: componentTouchSlop);

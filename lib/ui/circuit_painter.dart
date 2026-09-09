@@ -38,6 +38,9 @@ class CircuitPainter extends CustomPainter {
   final List<GridPoint>? wirePreview;
   final bool showPorts;
 
+  /// Terminal marcado como origem da ligação por toques, se houver.
+  final GridPoint? linkAnchor;
+
   CircuitPainter({
     required this.circuit,
     required this.simulator,
@@ -48,6 +51,7 @@ class CircuitPainter extends CustomPainter {
     required this.pan,
     this.wirePreview,
     this.showPorts = false,
+    this.linkAnchor,
   });
 
   bool get _editing => handles.isNotEmpty;
@@ -188,6 +192,21 @@ class CircuitPainter extends CustomPainter {
           paint,
         );
       }
+    }
+    final anchor = linkAnchor;
+    if (anchor != null) {
+      // Origem marcada: anel bem visível para não restar dúvida de onde o
+      // próximo toque vai ligar.
+      final at = Offset(anchor.x.toDouble(), anchor.y.toDouble());
+      canvas.drawCircle(at, 5, Paint()..color = const Color(0xFF00695C));
+      canvas.drawCircle(
+        at,
+        9,
+        Paint()
+          ..color = const Color(0xFF00695C)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
     }
   }
 

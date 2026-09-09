@@ -173,6 +173,32 @@ class Circuit {
     return best;
   }
 
+  /// Terminal (porta) mais próximo de [p] dentro de [tolerance], medido em
+  /// distância de quarteirão. Null quando não há nenhum por perto.
+  (Component, Port)? portAt(GridPoint p, {int tolerance = 0}) {
+    (Component, Port)? best;
+    var bestDist = 1 << 30;
+    for (final c in components) {
+      for (final port in c.ports) {
+        final d = (port.location.x - p.x).abs() + (port.location.y - p.y).abs();
+        if (d <= tolerance && d < bestDist) {
+          bestDist = d;
+          best = (c, port);
+        }
+      }
+    }
+    return best;
+  }
+
+  /// Há algum fio passando por [p]? Usado para saber se um terminal já está
+  /// ligado.
+  bool hasWireAt(GridPoint p) {
+    for (final w in wires) {
+      if (w.contains(p)) return true;
+    }
+    return false;
+  }
+
   /// Retângulo [minX, minY, maxX, maxY] do componente — o corpo que é
   /// desenhado, sem folga.
   ///

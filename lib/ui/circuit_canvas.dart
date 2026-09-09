@@ -52,6 +52,11 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
   int get _handleSlop =>
       (EditorState.handleTouchSlop / _zoom).round().clamp(4, 60);
 
+  /// Tolerância dos terminais na ligação por toques, também em unidades do
+  /// mundo — o alvo tem o mesmo tamanho no dedo em qualquer zoom.
+  int get _portSlop =>
+      (EditorState.portTouchSlop / _zoom).round().clamp(4, 60);
+
   EditorState get st => widget.state;
 
   Offset _toWorld(Offset screen) => (screen - _pan) / _zoom;
@@ -105,6 +110,7 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
                 // como no modo Fio: é neles que as pontas precisam encaixar.
                 showPorts: st.mode == EditorMode.wire ||
                     (st.mode == EditorMode.select && st.selectedWire != null),
+                linkAnchor: st.linkAnchor?.at,
               ),
             );
           },
@@ -218,6 +224,8 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
         st.placeAt(_snapPoint(world));
         break;
       case EditorMode.wire:
+        // Ligação por toques: primeiro terminal, depois o outro.
+        st.linkTap(_hitPoint(world), portSlop: _portSlop);
         break;
     }
   }
@@ -357,7 +365,11 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
     if (_wireStart != null && _wireEnd != null) {
       final a = _snapPoint(_toWorld(_wireStart!));
       final b = _snapPoint(_toWorld(_wireEnd!));
-      if (a != b) st.addWirePath(a, b, firstAxis: _wireAxis);
+      if (a != b) {
+        // Arrastar tem a palavra final: um traço desfaz a origem marcada.
+        st.cancelLink();
+        st.addWirePath(a, b, firstAxis: _wireAxis);
+      }
     }
     _wireStart = null;
     _wireEnd = null;

@@ -29,7 +29,7 @@ com toolchain Android configurada (`flutter doctor`).
 cd logisnap
 flutter pub get
 flutter run            # com um celular/emulador conectado
-flutter build apk      # gera build/app/outputs/flutter-apk/LogiSnap-v0.1.0.apk
+flutter build apk      # gera build/app/outputs/flutter-apk/LogiSnap-v0.1.1.apk
 ```
 
 Para rodar os testes (motor de simulação, importador .circ, JSON):

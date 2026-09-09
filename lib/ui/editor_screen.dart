@@ -89,7 +89,11 @@ class _EditorScreenState extends State<EditorScreen> {
                         'Toque no canvas para adicionar: '
                         '${st.pendingType!.displayName}'),
                   if (st.mode == EditorMode.wire)
-                    _hintBar('Arraste para desenhar um fio'),
+                    _hintBar(st.linkAnchor == null
+                        ? 'Toque em um componente para começar a ligação '
+                            '(ou arraste para desenhar o fio à mão)'
+                        : 'Agora toque no componente de destino — '
+                            'toque no vazio para cancelar'),
                   if (st.mode == EditorMode.erase)
                     _hintBar('Toque em um componente ou fio para apagar '
                         '(o fio sai inteiro)'),
@@ -571,7 +575,7 @@ class _EditorScreenState extends State<EditorScreen> {
     showAboutDialog(
       context: context,
       applicationName: 'LogiSnap',
-      applicationVersion: '0.1.0',
+      applicationVersion: '0.1.1',
       children: const [
         Text('Simulador de circuitos lógicos digitais para celular, '
             'inspirado no Logisim Evolution.\n\n'
