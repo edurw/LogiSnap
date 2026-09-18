@@ -175,11 +175,18 @@ class EditorState extends ChangeNotifier {
 
   // ------------------------------------------------------------ Edição
 
+  /// Coloca o componente escolhido com o **meio do desenho** em [p].
+  ///
+  /// A âncora do componente fica na saída (portas lógicas) ou no próprio
+  /// ponto de conexão (pinos, LED, botão), sempre numa borda — mirar por ela
+  /// obriga a calcular de cabeça onde o corpo vai cair. O dedo aponta o
+  /// centro e a âncora é deduzida daí, reencaixada na grade para as portas
+  /// continuarem alinhadas com os fios.
   void placeAt(GridPoint p) {
     final type = pendingType;
     if (type == null) return;
     _pushUndo();
-    circuit.addComponent(Component(
+    final c = Component(
       id: circuit.newId(),
       type: type,
       x: p.x,
@@ -189,7 +196,11 @@ class EditorState extends ChangeNotifier {
       facing: type == ComponentType.led || type == ComponentType.outputPin
           ? Facing.west
           : Facing.east,
-    ));
+    );
+    final b = circuit.boundsOf(c);
+    c.x = snap(c.x + (p.x - (b[0] + b[2]) / 2));
+    c.y = snap(c.y + (p.y - (b[1] + b[3]) / 2));
+    circuit.addComponent(c);
     _structureChanged();
   }
 

@@ -135,8 +135,10 @@ void main() {
     final circuit = _painter(tester).circuit;
     expect(circuit.components, hasLength(2));
     expect(circuit.wires, hasLength(1));
+    // Os pinos nascem centrados no toque, então as âncoras ficam a meio
+    // corpo de distância de onde o dedo encostou.
     expect(circuit.wires.single.points,
-        const [GridPoint(60, 40), GridPoint(240, 40)]);
+        const [GridPoint(70, 40), GridPoint(230, 40)]);
   });
 
   group('a ligação não pode criar curto', () {
