@@ -273,14 +273,15 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ------------------------------------------------------ Paleta
 
-  /// Tipos oferecidos na paleta.
-  ///
-  /// LED, botão, clock e constante continuam existindo no núcleo (para abrir
-  /// arquivos .circ e projetos antigos que os usem), mas não são mais
-  /// oferecidos para adicionar.
+  /// Tipos oferecidos na paleta, na ordem do enum: entradas e saídas
+  /// primeiro, depois as portas lógicas.
   static const List<ComponentType> _paletteTypes = [
     ComponentType.inputPin,
     ComponentType.outputPin,
+    ComponentType.led,
+    ComponentType.button,
+    ComponentType.clock,
+    ComponentType.constant,
     ComponentType.notGate,
     ComponentType.bufferGate,
     ComponentType.andGate,
