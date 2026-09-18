@@ -8,6 +8,8 @@ import 'package:logisnap/core/geometry.dart';
 import 'package:logisnap/core/values.dart';
 import 'package:logisnap/main.dart';
 import 'package:logisnap/state/editor_state.dart';
+import 'package:logisnap/ui/component_icon.dart';
+import 'package:logisnap/ui/component_palette.dart';
 
 /// Coloca [tipo] em [onde] pelo caminho da paleta.
 Component _coloca(EditorState st, ComponentType tipo, GridPoint onde) {
@@ -69,5 +71,88 @@ void main() {
     expect(constante.state, LogicValue.one);
     st.pokeAt(constante.location);
     expect(constante.state, LogicValue.zero);
+  });
+
+  test('todo componente pertence a exatamente uma categoria da paleta', () {
+    final ocorrencias = <ComponentType, int>{};
+    for (final categoria in kPaletteCategories) {
+      for (final tipo in categoria.types) {
+        ocorrencias[tipo] = (ocorrencias[tipo] ?? 0) + 1;
+      }
+    }
+    // Nenhum tipo pode ficar de fora nem aparecer em duas categorias: é o
+    // que garante que um componente novo não suma da paleta por esquecimento.
+    for (final tipo in ComponentType.values) {
+      expect(ocorrencias[tipo], 1,
+          reason: '${tipo.displayName} deveria estar em uma categoria só');
+    }
+    expect(paletteTypes, hasLength(ComponentType.values.length));
+  });
+
+  testWidgets('categorias vazias não aparecem', (WidgetTester tester) async {
+    await tester.pumpWidget(const LogiSnapApp());
+    await tester.pump();
+
+    expect(find.widgetWithText(FilterChip, 'E/S'), findsOneWidget);
+    expect(find.widgetWithText(FilterChip, 'Portas'), findsOneWidget);
+    expect(find.widgetWithText(FilterChip, 'Sequencial'), findsNothing);
+    expect(find.widgetWithText(FilterChip, 'Fiação'), findsNothing);
+  });
+
+  testWidgets('trocar de categoria troca a fileira e mantém o componente armado',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const LogiSnapApp());
+    await tester.pump();
+
+    // Começa em E/S.
+    expect(find.widgetWithText(ChoiceChip, 'Entrada'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'AND'), findsNothing);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Entrada'));
+    await tester.pumpAndSettle();
+    expect(find.text('Toque no canvas para adicionar: Entrada'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Portas'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(ChoiceChip, 'AND'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Entrada'), findsNothing);
+    // Trocar de categoria não desarma o que estava escolhido.
+    expect(find.text('Toque no canvas para adicionar: Entrada'), findsOneWidget);
+  });
+
+  testWidgets('todo tipo tem ícone desenhável', (WidgetTester tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Wrap(
+          children: [for (final t in ComponentType.values) ComponentIcon(t)],
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ComponentIcon), findsNWidgets(ComponentType.values.length));
+  });
+
+  testWidgets('a paleta cabe na faixa pedida e mantém alvos de 48 dp',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const LogiSnapApp());
+    await tester.pump();
+
+    // As duas fileiras juntas não podem roubar mais canvas do que o previsto.
+    expect(tester.getSize(find.byType(ComponentPalette)).height,
+        inInclusiveRange(96, 104));
+
+    // Chip de categoria: 32 dp de desenho...
+    final visual = tester.getSize(find.descendant(
+      of: find.byType(FilterChip).first,
+      matching: find.byType(Material),
+    ).first);
+    expect(visual.height, 32);
+
+    // ...e 48 dp de alvo de toque, aqui e nos componentes.
+    expect(tester.getSize(find.byType(FilterChip).first).height, 48);
+    expect(tester.getSize(find.byType(ChoiceChip).first).height, 48);
   });
 }

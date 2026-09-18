@@ -8,6 +8,7 @@ import '../core/geometry.dart';
 import '../core/simulator.dart';
 import '../core/values.dart';
 import '../core/wire.dart';
+import 'component_shapes.dart';
 
 /// Cores dos valores lógicos, no esquema do Logisim.
 Color colorOf(LogicValue v) {
@@ -379,19 +380,12 @@ class CircuitPainter extends CustomPainter {
   }
 
   void _paintPin(Canvas canvas, Component c, {required bool isOutput}) {
-    final v = isOutput
-        ? simulator.displayValueOf(c)
-        : c.state;
+    final v = isOutput ? simulator.displayValueOf(c) : c.state;
     final rect = _behindRect(c);
-    final fill = Paint()..color = const Color(0xFFF0F0E8);
+    _shapeAt(canvas, rect.center, c, fill: const Color(0xFFF0F0E8));
     if (isOutput) {
-      canvas.drawCircle(rect.center, 10, fill);
-      canvas.drawCircle(rect.center, 10, _bodyPaint);
       canvas.drawCircle(rect.center, 7,
           Paint()..color = colorOf(v).withAlpha(60));
-    } else {
-      canvas.drawRect(rect, fill);
-      canvas.drawRect(rect, _bodyPaint);
     }
     _drawText(
       canvas,
@@ -401,6 +395,31 @@ class CircuitPainter extends CustomPainter {
       bold: true,
       fontSize: 13,
     );
+  }
+
+  /// Desenha a silhueta do componente centrada em [center], no mesmo traço
+  /// que a paleta usa nos ícones.
+  void _shapeAt(
+    Canvas canvas,
+    Offset center,
+    Component c, {
+    Color? fill,
+    Color? accent,
+    String? text,
+  }) {
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    paintComponentShape(
+      canvas,
+      c.type,
+      inputs: c.inputs,
+      size: c.size,
+      stroke: Colors.black,
+      fill: fill,
+      accent: accent,
+      text: text,
+    );
+    canvas.restore();
   }
 
   String _digit(LogicValue v) {
@@ -425,8 +444,7 @@ class CircuitPainter extends CustomPainter {
         : on
             ? const Color(0xFFFF3020)
             : const Color(0xFF551510);
-    canvas.drawCircle(rect.center, 9, Paint()..color = color);
-    canvas.drawCircle(rect.center, 9, _bodyPaint);
+    _shapeAt(canvas, rect.center, c, fill: color);
     if (on) {
       canvas.drawCircle(
         rect.center,
@@ -437,48 +455,33 @@ class CircuitPainter extends CustomPainter {
   }
 
   void _paintButton(Canvas canvas, Component c) {
-    final rect = _behindRect(c);
     final pressed = c.state == LogicValue.one;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(3)),
-      Paint()..color = pressed ? const Color(0xFFB0D0B0) : const Color(0xFFE8E8E0),
+    _shapeAt(
+      canvas,
+      _behindRect(c).center,
+      c,
+      fill: pressed ? const Color(0xFFB0D0B0) : const Color(0xFFE8E8E0),
+      accent: pressed ? const Color(0xFF00A000) : Colors.black54,
     );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(3)),
-      _bodyPaint,
-    );
-    canvas.drawCircle(rect.center, 4,
-        Paint()..color = pressed ? const Color(0xFF00A000) : Colors.black54);
   }
 
   void _paintClock(Canvas canvas, Component c) {
-    final rect = _behindRect(c);
-    canvas.drawRect(rect, Paint()..color = const Color(0xFFF0F0E8));
-    canvas.drawRect(rect, _bodyPaint);
-    final wave = Path()
-      ..moveTo(rect.left + 4, rect.center.dy + 4)
-      ..lineTo(rect.center.dx - 2, rect.center.dy + 4)
-      ..lineTo(rect.center.dx - 2, rect.center.dy - 4)
-      ..lineTo(rect.center.dx + 4, rect.center.dy - 4)
-      ..lineTo(rect.center.dx + 4, rect.center.dy + 4)
-      ..lineTo(rect.right - 4, rect.center.dy + 4);
-    canvas.drawPath(
-      wave,
-      Paint()
-        ..color = colorOf(c.state)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8,
+    _shapeAt(
+      canvas,
+      _behindRect(c).center,
+      c,
+      fill: const Color(0xFFF0F0E8),
+      accent: colorOf(c.state),
     );
   }
 
   void _paintConstant(Canvas canvas, Component c) {
-    _drawText(
+    _shapeAt(
       canvas,
-      _digit(c.state),
       _behindRect(c, halfSide: 7).center,
-      color: colorOf(c.state),
-      bold: true,
-      fontSize: 15,
+      c,
+      accent: colorOf(c.state),
+      text: _digit(c.state),
     );
   }
 
@@ -486,88 +489,23 @@ class CircuitPainter extends CustomPainter {
   // Desenhadas no referencial local: saída na origem, entradas em x < 0.
 
   void _paintGate(Canvas canvas, Component c) {
+    paintComponentShape(
+      canvas,
+      c.type,
+      inputs: c.inputs,
+      size: c.size,
+      stroke: Colors.black,
+      fill: Colors.white,
+    );
+
+    // Pernas das entradas até o corpo (quando o corpo é mais estreito que a
+    // distribuição das entradas). Ficam fora da silhueta porque são pinos de
+    // conexão, que o ícone da paleta não mostra.
     final w = c.axisLength.toDouble();
+    final halfH = c.bodyHalfHeight.toDouble();
     final offsets = c.type.isMultiInputGate
         ? Component.inputOffsets(c.inputs)
         : const [0];
-    // Mesma medida que Circuit.boundsOf usa, para o retângulo de seleção e a
-    // área de toque não descolarem do desenho.
-    final halfH = c.bodyHalfHeight.toDouble();
-
-    final negated = c.type == ComponentType.nandGate ||
-        c.type == ComponentType.norGate ||
-        c.type == ComponentType.xnorGate ||
-        c.type == ComponentType.notGate;
-    // Largura do corpo sem a bolha de negação.
-    final bubble = negated ? 10.0 : 0.0;
-    final bodyRight = -bubble;
-
-    switch (c.type) {
-      case ComponentType.notGate:
-      case ComponentType.bufferGate:
-        final back = -w;
-        final path = Path()
-          ..moveTo(back, -10)
-          ..lineTo(bodyRight, 0)
-          ..lineTo(back, 10)
-          ..close();
-        canvas.drawPath(path, Paint()..color = Colors.white);
-        canvas.drawPath(path, _bodyPaint);
-        break;
-
-      case ComponentType.andGate:
-      case ComponentType.nandGate:
-        final backX = -w;
-        final flatRight = bodyRight - halfH; // início do arco
-        final path = Path()
-          ..moveTo(backX, -halfH)
-          ..lineTo(flatRight, -halfH)
-          ..arcToPoint(
-            Offset(flatRight, halfH),
-            radius: Radius.circular(halfH),
-            clockwise: true,
-          )
-          ..lineTo(backX, halfH)
-          ..close();
-        canvas.drawPath(path, Paint()..color = Colors.white);
-        canvas.drawPath(path, _bodyPaint);
-        break;
-
-      case ComponentType.orGate:
-      case ComponentType.norGate:
-      case ComponentType.xorGate:
-      case ComponentType.xnorGate:
-        final isX = c.type == ComponentType.xorGate ||
-            c.type == ComponentType.xnorGate;
-        // Curva traseira do corpo (côncava) e curvas frontais.
-        final backX = isX ? -w + 10 : -w;
-        final path = Path()
-          ..moveTo(backX, -halfH)
-          ..quadraticBezierTo(bodyRight - halfH * 0.9, -halfH, bodyRight, 0)
-          ..quadraticBezierTo(bodyRight - halfH * 0.9, halfH, backX, halfH)
-          ..quadraticBezierTo(backX + 14, 0, backX, -halfH)
-          ..close();
-        canvas.drawPath(path, Paint()..color = Colors.white);
-        canvas.drawPath(path, _bodyPaint);
-        if (isX) {
-          final extra = Path()
-            ..moveTo(backX - 10, -halfH)
-            ..quadraticBezierTo(backX - 10 + 14, 0, backX - 10, halfH);
-          canvas.drawPath(extra, _bodyPaint);
-        }
-        break;
-
-      default:
-        break;
-    }
-
-    if (negated) {
-      canvas.drawCircle(const Offset(-5, 0), 5, Paint()..color = Colors.white);
-      canvas.drawCircle(const Offset(-5, 0), 5, _bodyPaint);
-    }
-
-    // Pernas das entradas até o corpo (quando o corpo é mais estreito que a
-    // distribuição das entradas).
     for (final o in offsets) {
       final oy = o.toDouble();
       if (oy.abs() > halfH - 2) {
