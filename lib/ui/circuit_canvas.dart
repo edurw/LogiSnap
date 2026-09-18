@@ -168,11 +168,13 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
     return Rect.fromLTRB(minX, minY, maxX, maxY);
   }
 
-  /// Traz o circuito inteiro para o meio da tela.
+  /// Enquadra o circuito inteiro: ajusta o zoom para tudo caber e leva o
+  /// conjunto para o meio da tela.
   ///
-  /// O zoom só diminui, e apenas quando o circuito não cabe: aproximar por
-  /// conta própria tiraria a referência de quem está trabalhando de perto.
-  /// Sem nada desenhado, volta ao enquadramento inicial.
+  /// O zoom vai nos dois sentidos — afasta quando o circuito não cabe e
+  /// aproxima quando ele está pequeno no meio da tela —, sempre dentro dos
+  /// limites de [_minZoom] e [_maxZoom]. Sem nada desenhado, volta ao
+  /// enquadramento inicial.
   void _centerView(Size view) {
     final bounds = _contentBounds();
     if (bounds == null || view.isEmpty) {
@@ -187,12 +189,13 @@ class _CircuitCanvasState extends State<CircuitCanvas> {
     const margin = 40.0;
     final availableW = math.max(view.width - 2 * margin, 1.0);
     final availableH = math.max(view.height - 2 * margin, 1.0);
+    // O lado mais apertado manda: é o que garante que nada fique de fora.
     final fit = math.min(
       availableW / math.max(bounds.width, 1.0),
       availableH / math.max(bounds.height, 1.0),
     );
     setState(() {
-      if (fit < _zoom) _zoom = fit.clamp(_minZoom, _maxZoom).toDouble();
+      _zoom = fit.clamp(_minZoom, _maxZoom).toDouble();
       _pan = view.center(Offset.zero) - bounds.center * _zoom;
     });
   }
