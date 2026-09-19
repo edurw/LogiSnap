@@ -5,6 +5,7 @@ import '../core/circ_format.dart';
 import '../core/component.dart';
 import '../state/editor_state.dart';
 import 'circuit_canvas.dart';
+import 'component_palette.dart';
 import 'project_storage.dart';
 import 'projects_screen.dart';
 
@@ -104,7 +105,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 ],
               ),
             ),
-            _palette(context),
+            ComponentPalette(state: st),
             _toolbar(context),
           ],
         ),
@@ -269,52 +270,6 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
     );
     if (label != null) st.setSelectedLabel(label.trim());
-  }
-
-  // ------------------------------------------------------ Paleta
-
-  /// Tipos oferecidos na paleta.
-  ///
-  /// LED, botão, clock e constante continuam existindo no núcleo (para abrir
-  /// arquivos .circ e projetos antigos que os usem), mas não são mais
-  /// oferecidos para adicionar.
-  static const List<ComponentType> _paletteTypes = [
-    ComponentType.inputPin,
-    ComponentType.outputPin,
-    ComponentType.notGate,
-    ComponentType.bufferGate,
-    ComponentType.andGate,
-    ComponentType.orGate,
-    ComponentType.nandGate,
-    ComponentType.norGate,
-    ComponentType.xorGate,
-    ComponentType.xnorGate,
-  ];
-
-  Widget _palette(BuildContext context) {
-    return Container(
-      height: 52,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        itemCount: _paletteTypes.length,
-        itemBuilder: (context, i) {
-          final type = _paletteTypes[i];
-          final selected =
-              st.mode == EditorMode.place && st.pendingType == type;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: ChoiceChip(
-              label: Text(type.displayName),
-              selected: selected,
-              onSelected: (_) => st.choosePaletteType(type),
-              visualDensity: VisualDensity.compact,
-            ),
-          );
-        },
-      ),
-    );
   }
 
   // ------------------------------------------------------ Barra de modos
@@ -575,7 +530,7 @@ class _EditorScreenState extends State<EditorScreen> {
     showAboutDialog(
       context: context,
       applicationName: 'LogiSnap',
-      applicationVersion: '0.1.1',
+      applicationVersion: '0.1.2',
       children: const [
         Text('Simulador de circuitos lógicos digitais para celular, '
             'inspirado no Logisim Evolution.\n\n'

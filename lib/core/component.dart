@@ -98,12 +98,13 @@ class Component {
     int? size,
     this.label = '',
     LogicValue? state,
-  })  : inputs = inputs ?? (type.isMultiInputGate ? 2 : 0),
-        size = size ?? _defaultSize(type),
+  })  : inputs = inputs ?? defaultInputsOf(type),
+        size = size ?? defaultSizeOf(type),
         state = state ??
             (type == ComponentType.constant ? LogicValue.one : LogicValue.zero);
 
-  static int _defaultSize(ComponentType type) {
+  /// Tamanho padrão do tipo, no estilo Logisim.
+  static int defaultSizeOf(ComponentType type) {
     switch (type) {
       case ComponentType.notGate:
         return 30;
@@ -114,11 +115,19 @@ class Component {
     }
   }
 
+  /// Número de entradas padrão do tipo (0 para quem não é porta de várias).
+  static int defaultInputsOf(ComponentType type) =>
+      type.isMultiInputGate ? 2 : 0;
+
   GridPoint get location => GridPoint(x, y);
 
   /// Comprimento do corpo no eixo da saída → entradas (geometria do Logisim,
   /// para que arquivos .circ liguem os fios nos pontos certos).
-  int get axisLength {
+  int get axisLength => axisLengthOf(type, size);
+
+  /// Versão sem instância de [axisLength] — o ícone da paleta desenha a
+  /// mesma forma sem precisar de um componente no circuito.
+  static int axisLengthOf(ComponentType type, int size) {
     switch (type) {
       case ComponentType.notGate:
         return size; // triângulo + bolha já inclusos (padrão 30)
@@ -143,7 +152,10 @@ class Component {
   ///
   /// É a mesma medida usada para desenhar a porta, para que a área de toque e
   /// o retângulo de seleção fiquem colados no componente.
-  int get bodyHalfHeight {
+  int get bodyHalfHeight => bodyHalfHeightOf(type, inputs);
+
+  /// Versão sem instância de [bodyHalfHeight].
+  static int bodyHalfHeightOf(ComponentType type, int inputs) {
     // NOT e Buffer são triângulos de altura fixa; os demais acompanham a
     // distribuição das entradas.
     if (!type.isMultiInputGate) return 10;

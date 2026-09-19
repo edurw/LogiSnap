@@ -11,8 +11,14 @@ inspirado no [Logisim Evolution](https://github.com/logisim-evolution/logisim-ev
 - **Simulação em tempo real**: os fios mudam de cor conforme o valor
   (verde-claro = 1, verde-escuro = 0, azul = flutuante, vermelho = erro/conflito),
   com detecção de oscilação e clock com velocidade ajustável.
+- **Paleta por categorias**: os componentes ficam agrupados (E/S e Portas),
+  cada um com o ícone do próprio desenho; o toque no canvas posiciona o
+  componente pelo meio do corpo.
 - **Modos de edição**: Interagir (poke), Mover/selecionar (com girar, rótulo,
-  nº de entradas, duplicar), Fio (arraste com roteamento em L) e Apagar.
+  nº de entradas, duplicar), Fio (toque na origem e no destino para ligar
+  automaticamente, ou arraste para traçar à mão) e Apagar.
+- **Enquadrar**: o botão no canto do canvas ajusta zoom e posição para o
+  circuito inteiro caber na tela.
 - **Projetos**: salvar/abrir no dispositivo (JSON) e desfazer (undo).
 - **Compatibilidade .circ**: importa e exporta arquivos do Logisim
   Evolution (componentes suportados, 1 bit). A geometria segue a do Logisim,
@@ -29,7 +35,7 @@ com toolchain Android configurada (`flutter doctor`).
 cd logisnap
 flutter pub get
 flutter run            # com um celular/emulador conectado
-flutter build apk      # gera build/app/outputs/flutter-apk/LogiSnap-v0.1.1.apk
+flutter build apk      # gera build/app/outputs/flutter-apk/LogiSnap-v0.1.2.apk
 ```
 
 Para rodar os testes (motor de simulação, importador .circ, JSON):
