@@ -5,6 +5,7 @@ import '../core/circ_format.dart';
 import '../core/component.dart';
 import '../state/editor_state.dart';
 import 'circuit_canvas.dart';
+import 'import_report_dialog.dart';
 import 'component_palette.dart';
 import 'project_storage.dart';
 import 'projects_screen.dart';
@@ -354,7 +355,8 @@ class _EditorScreenState extends State<EditorScreen> {
           if (result == null) return;
           st.loadCircuit(result.circuit, fileName: result.circuit.name);
           st.dirty = true;
-          if (result.warnings.isNotEmpty) _showWarnings(result.warnings);
+          if (!mounted) return;
+          showImportReport(context, result);
         } catch (e) {
           _toast('Falha na importação: $e');
         }
@@ -443,23 +445,6 @@ class _EditorScreenState extends State<EditorScreen> {
     return answer ?? false;
   }
 
-  void _showWarnings(List<String> warnings) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Avisos da importação'),
-        content: SingleChildScrollView(
-          child: Text(warnings.map((w) => '• $w').join('\n\n')),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
 
   static const _examples = {
     'Meia-somadora': 'assets/examples/meia_somadora.circ',
@@ -487,7 +472,8 @@ class _EditorScreenState extends State<EditorScreen> {
       final result = CircFormat.import(xml);
       st.loadCircuit(result.circuit,
           fileName: path.split('/').last.replaceAll('.circ', ''));
-      if (result.warnings.isNotEmpty) _showWarnings(result.warnings);
+      if (!mounted) return;
+      showImportReport(context, result);
     } catch (e) {
       _toast('Erro ao carregar exemplo: $e');
     }
@@ -530,7 +516,7 @@ class _EditorScreenState extends State<EditorScreen> {
     showAboutDialog(
       context: context,
       applicationName: 'LogiSnap',
-      applicationVersion: '0.1.2',
+      applicationVersion: '0.1.3',
       children: const [
         Text('Simulador de circuitos lógicos digitais para celular, '
             'inspirado no Logisim Evolution.\n\n'

@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logisnap/core/component.dart';
 import 'package:logisnap/core/geometry.dart';
 import 'package:logisnap/core/values.dart';
-import 'package:logisnap/main.dart';
+import 'support/app_pump.dart';
 import 'package:logisnap/state/editor_state.dart';
 import 'package:logisnap/ui/component_icon.dart';
 import 'package:logisnap/ui/component_palette.dart';
@@ -21,8 +21,7 @@ Component _coloca(EditorState st, ComponentType tipo, GridPoint onde) {
 void main() {
   testWidgets('a paleta oferece LED, Botão, Clock e Constante',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     for (final rotulo in ['LED', 'Botão', 'Clock', 'Constante']) {
       await tester.scrollUntilVisible(
@@ -90,8 +89,7 @@ void main() {
   });
 
   testWidgets('categorias vazias não aparecem', (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     expect(find.widgetWithText(FilterChip, 'E/S'), findsOneWidget);
     expect(find.widgetWithText(FilterChip, 'Portas'), findsOneWidget);
@@ -101,8 +99,7 @@ void main() {
 
   testWidgets('trocar de categoria troca a fileira e mantém o componente armado',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     // Começa em E/S.
     expect(find.widgetWithText(ChoiceChip, 'Entrada'), findsOneWidget);
@@ -137,8 +134,7 @@ void main() {
 
   testWidgets('a paleta cabe na faixa pedida e mantém alvos de 48 dp',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     // As duas fileiras juntas não podem roubar mais canvas do que o previsto.
     expect(tester.getSize(find.byType(ComponentPalette)).height,

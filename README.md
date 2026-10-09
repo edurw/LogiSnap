@@ -22,7 +22,10 @@ inspirado no [Logisim Evolution](https://github.com/logisim-evolution/logisim-ev
 - **Projetos**: salvar/abrir no dispositivo (JSON) e desfazer (undo).
 - **Compatibilidade .circ**: importa e exporta arquivos do Logisim
   Evolution (componentes suportados, 1 bit). A geometria segue a do Logisim,
-  então os fios dos arquivos importados encaixam nos mesmos pontos.
+  então os fios dos arquivos importados encaixam nos mesmos pontos. O que o
+  app ainda não tem (flip-flops, memórias…) fica de fora com um aviso
+  listando o que foi omitido e quantos; os fios continuam no lugar, com as
+  pontas em aberto.
 - **Exemplos embutidos**: meia-somadora, latch SR e pisca-pisca com clock
   (menu ⋮ → Exemplos).
 
@@ -35,7 +38,7 @@ com toolchain Android configurada (`flutter doctor`).
 cd logisnap
 flutter pub get
 flutter run            # com um celular/emulador conectado
-flutter build apk      # gera build/app/outputs/flutter-apk/LogiSnap-v0.1.2.apk
+flutter build apk      # gera build/app/outputs/flutter-apk/LogiSnap-v0.1.3.apk
 ```
 
 Para rodar os testes (motor de simulação, importador .circ, JSON):

@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:logisnap/main.dart';
+import 'support/app_pump.dart';
 import 'package:logisnap/ui/circuit_canvas.dart';
 import 'package:logisnap/ui/circuit_painter.dart';
 
@@ -17,8 +17,7 @@ CircuitPainter _painter(WidgetTester tester) {
 void main() {
   testWidgets('centralizar devolve o enquadramento depois de arrastar a tela',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     final start = _painter(tester).pan;
 
@@ -33,8 +32,7 @@ void main() {
 
   testWidgets('centralizar aproxima quando o circuito é pequeno',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     final canvas = tester.getRect(find.byType(CircuitCanvas));
     final zoomInicial = _painter(tester).zoom;
@@ -55,8 +53,7 @@ void main() {
 
   testWidgets('centralizar afasta quando o circuito não cabe',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     final canvas = tester.getRect(find.byType(CircuitCanvas));
     final zoomInicial = _painter(tester).zoom;

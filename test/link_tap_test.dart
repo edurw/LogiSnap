@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logisnap/core/component.dart';
 import 'package:logisnap/core/geometry.dart';
 import 'package:logisnap/core/values.dart';
-import 'package:logisnap/main.dart';
+import 'support/app_pump.dart';
 import 'package:logisnap/state/editor_state.dart';
 import 'package:logisnap/ui/circuit_canvas.dart';
 import 'package:logisnap/ui/circuit_painter.dart';
@@ -108,8 +108,7 @@ void main() {
 
   testWidgets('no modo Fio, dois toques no canvas ligam os componentes',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const LogiSnapApp());
-    await tester.pump();
+    await pumpEditor(tester);
 
     final canvas = tester.getRect(find.byType(CircuitCanvas));
     const primeiro = Offset(150, 150);

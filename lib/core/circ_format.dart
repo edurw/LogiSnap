@@ -10,7 +10,17 @@ import 'values.dart';
 class CircImportResult {
   final Circuit circuit;
   final List<String> warnings;
-  CircImportResult(this.circuit, this.warnings);
+
+  /// Componentes que este app ainda não tem, contados por nome em português
+  /// (ex.: `{'Flip-flop D': 2}`). O resto do circuito entra normalmente e os
+  /// fios que chegavam neles ficam com as pontas em aberto.
+  final Map<String, int> omitted;
+
+  CircImportResult(this.circuit, this.warnings, {this.omitted = const {}});
+
+  /// Rótulos prontos para mostrar na tela: `Flip-flop D (2)`.
+  List<String> get omittedLabels =>
+      [for (final e in omitted.entries) '${e.key} (${e.value})'];
 }
 
 /// Importa e exporta arquivos `.circ` do Logisim / Logisim Evolution.
@@ -40,10 +50,71 @@ class CircFormat {
     'Button': ComponentType.button,
   };
 
+
+  /// Nome em português dos componentes do Logisim que este app ainda não
+  /// tem. O que não estiver aqui aparece com o nome original do arquivo.
+  static const _nomesNaoSuportados = {
+    // #Memory
+    'D Flip-Flop': 'Flip-flop D',
+    'T Flip-Flop': 'Flip-flop T',
+    'J-K Flip-Flop': 'Flip-flop JK',
+    'S-R Flip-Flop': 'Flip-flop SR',
+    'Register': 'Registrador',
+    'Counter': 'Contador',
+    'Shift Register': 'Registrador de deslocamento',
+    'Random': 'Gerador aleatório',
+    'RAM': 'Memória RAM',
+    'ROM': 'Memória ROM',
+    // #Plexers
+    'Multiplexer': 'Multiplexador',
+    'Demultiplexer': 'Demultiplexador',
+    'Decoder': 'Decodificador',
+    'Priority Encoder': 'Codificador de prioridade',
+    'BitSelector': 'Seletor de bits',
+    // #Arithmetic
+    'Adder': 'Somador',
+    'Subtractor': 'Subtrator',
+    'Multiplier': 'Multiplicador',
+    'Divider': 'Divisor',
+    'Negator': 'Negador',
+    'Comparator': 'Comparador',
+    'Shifter': 'Deslocador',
+    'BitAdder': 'Somador de bits',
+    'BitFinder': 'Localizador de bits',
+    // #Wiring
+    'Splitter': 'Divisor de barramento',
+    'Tunnel': 'Túnel',
+    'Pull Resistor': 'Resistor de pull',
+    'Power': 'Alimentação',
+    'Ground': 'Terra',
+    'Transistor': 'Transistor',
+    'Transmission Gate': 'Porta de transmissão',
+    'Bit Extender': 'Extensor de bits',
+    'Probe': 'Sonda',
+    // #Gates
+    'Controlled Buffer': 'Buffer controlado',
+    'Controlled Inverter': 'Inversor controlado',
+    'Even Parity': 'Paridade par',
+    'Odd Parity': 'Paridade ímpar',
+    // #I/O
+    '7-Segment Display': 'Display de 7 segmentos',
+    'Hex Digit Display': 'Display hexadecimal',
+    'LED Matrix': 'Matriz de LEDs',
+    'Keyboard': 'Teclado',
+    'Joystick': 'Joystick',
+    'TTY': 'Terminal',
+  };
+
+  static void _contar(Map<String, int> contagem, String nome) =>
+      contagem[nome] = (contagem[nome] ?? 0) + 1;
+
   // ---------------------------------------------------------------- Import
 
   static CircImportResult import(String xmlSource, {String? circuitName}) {
     final warnings = <String>[];
+    // Componentes que o app ainda não tem, contados por nome para o aviso
+    // do fim da importação.
+    final omitidos = <String, int>{};
     final XmlDocument doc;
     try {
       doc = XmlDocument.parse(xmlSource);
@@ -94,8 +165,9 @@ class CircFormat {
         continue;
       }
       if (libId == null) {
-        warnings.add(
-            'Subcircuito "$compName" em $loc não é suportado e foi ignorado.');
+        // Subcircuito: o arquivo guarda o desenho dele à parte, e esta
+        // versão ainda não monta subcircuitos.
+        _contar(omitidos, 'Subcircuito "$compName"');
         continue;
       }
       final libDesc = libs[libId] ?? '';
@@ -108,9 +180,9 @@ class CircFormat {
 
       final type = _typeFor(libDesc, compName, attrs);
       if (type == null) {
-        warnings.add(
-            'Componente "$compName" ($libDesc) em $loc não é suportado e foi '
-            'ignorado.');
+        // Componente que o app ainda não tem: fica de fora, e os fios que
+        // chegavam nele continuam no circuito com as pontas em aberto.
+        _contar(omitidos, _nomesNaoSuportados[compName] ?? compName);
         continue;
       }
 
@@ -160,7 +232,7 @@ class CircFormat {
     // editor.
     circuit.mergeWirePaths();
 
-    return CircImportResult(circuit, warnings);
+    return CircImportResult(circuit, warnings, omitted: omitidos);
   }
 
   static ComponentType? _typeFor(
