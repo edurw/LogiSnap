@@ -259,7 +259,49 @@ class CircFormat {
 
   // ---------------------------------------------------------------- Export
 
+  /// Folga entre a borda do circuito e a origem, na exportação.
+  static const int exportMargin = 40;
+
+  /// Deslocamento aplicado ao exportar, para encostar o circuito no canto
+  /// superior esquerdo do Logisim.
+  ///
+  /// O Logisim tem a origem no canto superior esquerdo e não abre arquivos
+  /// com coordenadas negativas, enquanto este app deixa desenhar em qualquer
+  /// lugar do plano — inclusive longe da origem, o que faz o circuito abrir
+  /// fora da área visível lá. O desenho inteiro é encostado no canto, com
+  /// [exportMargin] de folga, venha ele de coordenadas negativas ou de muito
+  /// longe. O deslocamento é múltiplo de [kGrid], senão os componentes
+  /// sairiam do alinhamento com os fios.
+  static GridPoint exportOffset(Circuit circuit) {
+    var minX = 1 << 30;
+    var minY = 1 << 30;
+
+    void incluir(int x, int y) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+    }
+
+    // O corpo desenhado entra na conta, não só a âncora: senão uma porta
+    // ancorada em x=0 ficaria com metade do desenho fora do Logisim.
+    for (final c in circuit.components) {
+      final b = circuit.boundsOf(c);
+      incluir(b[0], b[1]);
+    }
+    for (final w in circuit.wires) {
+      for (final p in w.points) {
+        incluir(p.x, p.y);
+      }
+    }
+    if (minX == 1 << 30) return const GridPoint(0, 0); // circuito vazio
+
+    int deslocar(int min) => ((exportMargin - min) / kGrid).ceil() * kGrid;
+
+    return GridPoint(deslocar(minX), deslocar(minY));
+  }
+
+
   static String export(Circuit circuit) {
+    final off = exportOffset(circuit);
     final b = XmlBuilder();
     b.processing('xml', 'version="1.0" encoding="UTF-8" standalone="no"');
     b.element('project', attributes: {
@@ -269,10 +311,40 @@ class CircFormat {
       b.element('lib', attributes: {'desc': '#Wiring', 'name': '0'});
       b.element('lib', attributes: {'desc': '#Gates', 'name': '1'});
       b.element('lib', attributes: {'desc': '#I/O', 'name': '5'});
+      // A biblioteca #Base traz as ferramentas (cutucar, editar, texto). Sem
+      // declará-la e sem a barra montada abaixo, o Logisim abre o arquivo com
+      // a barra vazia: o circuito aparece, mas não dá para cutucar os pinos
+      // nem mexer em nada.
+      b.element('lib', attributes: {'desc': '#Base', 'name': '8'});
       b.element('main', attributes: {'name': 'main'});
-      b.element('options');
-      b.element('mappings');
-      b.element('toolbar');
+      b.element('options', nest: () {
+        b.element('a',
+            attributes: {'name': 'gateUndefined', 'val': 'ignore'});
+        b.element('a', attributes: {'name': 'simlimit', 'val': '1000'});
+        b.element('a', attributes: {'name': 'simrand', 'val': '0'});
+      });
+      b.element('mappings', nest: () {
+        for (final botao in ['Button2', 'Button3', 'Ctrl Button1']) {
+          b.element('tool',
+              attributes: {'lib': '8', 'map': botao, 'name': 'Menu Tool'});
+        }
+      });
+      // Mesma barra que o Logisim monta num projeto novo.
+      b.element('toolbar', nest: () {
+        for (final nome in ['Poke Tool', 'Edit Tool', 'Text Tool']) {
+          b.element('tool', attributes: {'lib': '8', 'name': nome});
+        }
+        b.element('sep');
+        b.element('tool', attributes: {'lib': '0', 'name': 'Pin'});
+        b.element('tool', attributes: {'lib': '0', 'name': 'Pin'}, nest: () {
+          b.element('a', attributes: {'name': 'facing', 'val': 'west'});
+          b.element('a', attributes: {'name': 'output', 'val': 'true'});
+          b.element('a', attributes: {'name': 'labelloc', 'val': 'east'});
+        });
+        for (final porta in ['NOT Gate', 'AND Gate', 'OR Gate']) {
+          b.element('tool', attributes: {'lib': '1', 'name': porta});
+        }
+      });
       b.element('circuit', attributes: {'name': 'main'}, nest: () {
         b.element('a', attributes: {'name': 'circuit', 'val': 'main'});
         for (final c in circuit.components) {
@@ -280,7 +352,7 @@ class CircFormat {
           if (info == null) continue;
           b.element('comp', attributes: {
             'lib': info.$1,
-            'loc': '(${c.x},${c.y})',
+            'loc': '(${c.x + off.x},${c.y + off.y})',
             'name': info.$2,
           }, nest: () {
             for (final e in info.$3.entries) {
@@ -293,8 +365,8 @@ class CircFormat {
         for (final w in circuit.wires) {
           for (final (from, to) in w.segments) {
             b.element('wire', attributes: {
-              'from': '(${from.x},${from.y})',
-              'to': '(${to.x},${to.y})',
+              'from': '(${from.x + off.x},${from.y + off.y})',
+              'to': '(${to.x + off.x},${to.y + off.y})',
             });
           }
         }
@@ -313,7 +385,15 @@ class CircFormat {
     switch (c.type) {
       case ComponentType.inputPin:
       case ComponentType.outputPin:
-        if (c.type == ComponentType.outputPin) attrs['output'] = 'true';
+        if (c.type == ComponentType.outputPin) {
+          attrs['output'] = 'true';
+        } else {
+          // Sem isto vale o padrão da biblioteca do Logisim, que deixa o
+          // pino de entrada em três estados: cutucar alterna x, 0 e 1. O
+          // pino criado direto lá alterna só entre 0 e 1, e é esse o
+          // comportamento que o circuito exportado deve ter.
+          attrs['tristate'] = 'false';
+        }
         if (c.facing != Facing.east) attrs['facing'] = facingAttr();
         return ('0', 'Pin', attrs);
       case ComponentType.clock:

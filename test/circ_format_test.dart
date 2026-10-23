@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logisnap/core/circ_format.dart';
+import 'package:logisnap/core/circuit.dart';
 import 'package:logisnap/core/component.dart';
 import 'package:logisnap/core/geometry.dart';
 import 'package:logisnap/core/serialization.dart';
@@ -79,13 +80,16 @@ void main() {
     final original = CircFormat.import(xml).circuit;
     final exported = CircFormat.export(original);
     final reimported = CircFormat.import(exported).circuit;
+    // A exportação encosta o desenho no canto; tudo anda junto, então a
+    // comparação é feita com o mesmo deslocamento aplicado.
+    final off = CircFormat.exportOffset(original);
 
     expect(reimported.components.length, original.components.length);
     expect(reimported.wires.length, original.wires.length);
     for (var i = 0; i < original.components.length; i++) {
       final a = original.components[i];
-      final b = reimported.components
-          .firstWhere((e) => e.x == a.x && e.y == a.y && e.type == a.type);
+      final b = reimported.components.firstWhere((e) =>
+          e.x == a.x + off.x && e.y == a.y + off.y && e.type == a.type);
       expect(b.label, a.label);
       expect(b.facing, a.facing);
       if (a.type.isMultiInputGate) expect(b.inputs, a.inputs);
@@ -162,5 +166,128 @@ void main() {
 
     // A omissão não vira aviso solto: o diálogo mostra a lista contada.
     expect(result.warnings, isEmpty);
+  });
+
+  test('exportação empurra o circuito para o quadrante positivo do Logisim',
+      () {
+    // O app deixa desenhar em coordenadas negativas; o Logisim tem a origem
+    // no canto superior esquerdo e não abre o arquivo se elas aparecerem.
+    final c = Circuit();
+    final pino = c.addComponent(Component(
+        id: c.newId(), type: ComponentType.inputPin, x: -300, y: -50));
+    final porta = c.addComponent(Component(
+        id: c.newId(),
+        type: ComponentType.andGate,
+        x: -100,
+        y: -50,
+        inputs: 2));
+    c.addWirePath(const [
+      GridPoint(-300, -50),
+      GridPoint(-200, -50),
+      GridPoint(-200, -60),
+      GridPoint(-150, -60),
+    ]);
+
+    final xml = CircFormat.export(c);
+
+    // Nenhuma coordenada negativa sobrou no arquivo.
+    final coordenadas = RegExp(r'\((-?\d+),(-?\d+)\)').allMatches(xml);
+    expect(coordenadas, isNotEmpty);
+    for (final m in coordenadas) {
+      expect(int.parse(m.group(1)!), greaterThanOrEqualTo(0),
+          reason: 'x negativo em ${m.group(0)}');
+      expect(int.parse(m.group(2)!), greaterThanOrEqualTo(0),
+          reason: 'y negativo em ${m.group(0)}');
+    }
+
+    final volta = CircFormat.import(xml).circuit;
+
+    // Reimportar preserva as distâncias: o circuito só andou, não deformou.
+    final voltaPino =
+        volta.components.firstWhere((e) => e.type == ComponentType.inputPin);
+    final voltaPorta =
+        volta.components.firstWhere((e) => e.type == ComponentType.andGate);
+    expect(voltaPorta.x - voltaPino.x, porta.x - pino.x);
+    expect(voltaPorta.y - voltaPino.y, porta.y - pino.y);
+
+    // O fio andou junto: a ponta continua em cima da saída do pino.
+    expect(volta.wires, hasLength(1));
+    expect(volta.wires.single.start, voltaPino.location);
+    // E o traçado tem o mesmo formato de antes.
+    final deslocamento = CircFormat.exportOffset(c);
+    expect(volta.wires.single.points, [
+      for (final p in c.wires.single.points)
+        p.translate(deslocamento.x, deslocamento.y)
+    ]);
+
+    // Sobra a margem combinada entre o desenho e a origem.
+    var menorX = 1 << 30;
+    var menorY = 1 << 30;
+    for (final comp in volta.components) {
+      final b = volta.boundsOf(comp);
+      if (b[0] < menorX) menorX = b[0];
+      if (b[1] < menorY) menorY = b[1];
+    }
+    expect(menorX, greaterThanOrEqualTo(CircFormat.exportMargin));
+    expect(menorY, greaterThanOrEqualTo(CircFormat.exportMargin));
+  });
+
+  test('circuito longe da origem volta para perto dela', () {
+    final c = Circuit();
+    c.addComponent(Component(
+        id: c.newId(), type: ComponentType.inputPin, x: 5000, y: 3000));
+    final xml = CircFormat.export(c);
+
+    final volta = CircFormat.import(xml).circuit;
+    final b = volta.boundsOf(volta.components.single);
+    expect(b[0], CircFormat.exportMargin);
+    expect(b[1], CircFormat.exportMargin);
+
+    // E exportar de novo não mexe mais em nada: o enquadramento é estável.
+    expect(CircFormat.exportOffset(volta), const GridPoint(0, 0));
+  });
+
+  test('pino de entrada sai sem três estados, como o do Logisim', () {
+    final c = Circuit();
+    c.addComponent(Component(
+        id: c.newId(), type: ComponentType.inputPin, x: 100, y: 100));
+    c.addComponent(Component(
+        id: c.newId(), type: ComponentType.outputPin, x: 300, y: 100));
+    final xml = CircFormat.export(c);
+
+    // Sem este atributo o Logisim usa o padrão da biblioteca e o pino passa
+    // a alternar entre x, 0 e 1 ao ser cutucado.
+    expect(xml, contains('<a name="tristate" val="false"/>'));
+    // Só a entrada leva o atributo; na saída ele não faz sentido.
+    expect(RegExp('tristate').allMatches(xml), hasLength(1));
+
+    // E o arquivo continua reimportando igual.
+    final volta = CircFormat.import(xml).circuit;
+    expect(volta.components.where((e) => e.type == ComponentType.inputPin),
+        hasLength(1));
+    expect(volta.components.where((e) => e.type == ComponentType.outputPin),
+        hasLength(1));
+  });
+
+  test('o .circ exportado traz as ferramentas que o Logisim precisa', () {
+    final c = Circuit();
+    c.addComponent(Component(
+        id: c.newId(), type: ComponentType.inputPin, x: 100, y: 100));
+    final xml = CircFormat.export(c);
+
+    // Com a barra vazia o Logisim abre o arquivo sem ferramenta nenhuma: o
+    // circuito aparece, mas não dá para cutucar os pinos nem editar.
+    expect(xml, isNot(contains('<toolbar/>')));
+    expect(xml, contains('<lib desc="#Base" name="8"'));
+    expect(xml, contains('name="Poke Tool"'));
+    expect(xml, contains('name="Edit Tool"'));
+    expect(xml, contains('map="Button3"'));
+
+    // As ferramentas não podem confundir a reimportação: elas ficam fora do
+    // <circuit>, então nada vira componente omitido.
+    final volta = CircFormat.import(xml);
+    expect(volta.circuit.components, hasLength(1));
+    expect(volta.omitted, isEmpty);
+    expect(volta.warnings, isEmpty);
   });
 }
